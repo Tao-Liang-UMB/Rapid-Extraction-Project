@@ -1,0 +1,59 @@
+## Description
+# Takes input mzML spectra and runs them through a MALDIQuant pipeline for processing
+# MALDI spectra. Outputs a peak list for each spectra.
+
+## Input
+# Path - a folder containing MzXML spectra
+# snr - acceptable SNR ratio for peaks
+
+## Output
+# Features - a peak list of detected from the paraeters providedm
+
+AnalyzeSpectra <- function(path,snr){
+  
+  library(MALDIquant)
+  library(MALDIquantForeign)
+
+  # Read in MzML files --------------------------------------------------------
+  file.list <- list.files(path, pattern=".mzML$",full.names=T)
+  
+  spectra <- importMzMl(file.list)
+  
+  # Normalize MS intensities ---------------------------------------------------
+  spectra2 <- transformIntensity(spectra, method = "sqrt")
+  spectra3 <- smoothIntensity(spectra2, method="SavitzkyGolay", halfWindowSize = 20)
+  
+  # Remove Baseline ------------------------------------------------------------
+  spectra4 <- removeBaseline(spectra3, method = "SNIP", iterations = 100)
+  
+  spectra5 <- calibrateIntensity(spectra4, method = "TIC")
+  
+  # Align MS -------------------------------------------------------------------
+  spectra6_0 <- alignSpectra(spectra5,reference = spectra5[[1]])
+  
+  # average technical replicates -----------------------------------------------
+  # change based on how many spectra you imported
+  average.sequence<- factor(c("1","1","1", "2","2","2","3","3","3","4","4","4","5","5","5","6",
+                              "6","6","7","7","7","8","8","8","9","9","9"),
+                            levels = c("1","2","3","4","5","6","7","8","9"))
+  spectra6<-averageMassSpectra(spectra6_0, labels = average.sequence, method="mean") # Average technical replicates
+  
+  # Pick Peaks -----------------------------------------------------------------
+  peaks <- detectPeaks(spectra6, SNR = snr, halfWindowSize = 10, method = "MAD")
+  peaks <- binPeaks(peaks, tolerance = 0.5)
+  
+  # Preparing Spectra for dot product ------------------------------------------
+  # This small section extracts the sample file name and adjusts it to be the sample name.
+  sample <- sapply(spectra6, function(x) metaData(x)$file)
+  sample <- gsub(".*\\\\", "", sample)
+  sample <- gsub(".mzML$","",sample)
+  sample <- sample[1,]
+  sample <- gsub("001","",sample)  #since triplicate, so only select "001" sample for renaming
+  sample <- factor(sample) 
+  
+  # Retrieves identified peaks and intensities as a matrix (row = sample, col = m/z, value = intensity)
+  features <- intensityMatrix(peaks, spectra6)
+  rownames(features) <- sample
+  
+  return(features)
+}
