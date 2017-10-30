@@ -7,16 +7,15 @@
 # snr - acceptable SNR ratio for peaks
 
 ## Output
-# Features - a peak list of detected from the paraeters provided
+# Features - a peak list of detected from the paraeters providedm
 
 AnalyzeSpectra <- function(path,snr){
   
   library(MALDIquant)
   library(MALDIquantForeign)
-
+  
   # Read in MzML files --------------------------------------------------------
   file.list <- list.files(path, pattern=".mzML$",full.names=T)
-  
   spectra <- importMzMl(file.list)
   
   # Normalize MS intensities ---------------------------------------------------
@@ -34,9 +33,13 @@ AnalyzeSpectra <- function(path,snr){
   # average technical replicates -----------------------------------------------
   # change based on how many spectra you imported
   average.sequence<- factor(c("1","1","1", "2","2","2","3","3","3","4","4","4","5","5","5","6",
-                              "6","6","7","7","7","8","8","8","9","9","9"),
-                            levels = c("1","2","3","4","5","6","7","8","9"))
-  spectra6<-averageMassSpectra(spectra6_0, labels = average.sequence, method="mean") # Average technical replicates
+                              "6","6","7","7","7","8","8","8","9","9","9","10","10","10","11",
+                              "11","11","12","12","12","13","13","13","14","14","14","15","15",
+                              "15","16","16","16","17","17","17","18","18","18", "19", "19", 
+                              "19","20","20","20"),
+                            levels = c("1","2","3","4","5","6","7","8","9",
+                                       "10","11","12","13","14","15","16","17","18","19","20"))
+  spectra6<-averageMassSpectra(spectra6_0, labels = average.sequence, method="mean")
   
   # Pick Peaks -----------------------------------------------------------------
   peaks <- detectPeaks(spectra6, SNR = snr, halfWindowSize = 10, method = "MAD")
