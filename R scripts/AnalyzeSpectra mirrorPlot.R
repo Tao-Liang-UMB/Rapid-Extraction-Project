@@ -1,23 +1,24 @@
 ## Description
 # Takes input mzML spectra and runs them through a MALDIQuant pipeline for processing
-# MALDI spectra. Outputs a peak list for each spectra.
+# MALDI spectra. Outputs a long tibble containing peak list for each spectra.
 
 ## Input
-# Path - a folder containing MzXML spectra
+# fileDf - a data frame containing a minimum of these 2 named columns: 
+#           -> path - The paths and filenames of the mzML files.
+#           -> samp - The samp the file belongs to for import. Files to be 
+#                   averaged together should have the same samp
 # snr - acceptable SNR ratio for peaks
 
 ## Output
-# Features - a peak list of detected from the paraeters provided
+# Features - a peak list of detected from the parameters provided
 
-AnalyzeSpectra <- function(path,snr){
-  
+AnalyzeSpectra <- function(fileDf ,snr){
+  library(tidyverse)
   library(MALDIquant)
   library(MALDIquantForeign)
 
   # Read in MzML files --------------------------------------------------------
-  file.list <- list.files(path, pattern=".mzML$",full.names=T)
-  
-  spectra <- importMzMl(file.list)
+  spectra <- importMzMl(as.character(fileDf$path))
   
   # Normalize MS intensities ---------------------------------------------------
   spectra2 <- transformIntensity(spectra, method = "sqrt")
@@ -29,31 +30,39 @@ AnalyzeSpectra <- function(path,snr){
   spectra5 <- calibrateIntensity(spectra4, method = "TIC")
   
   # Align MS -------------------------------------------------------------------
-  spectra6_0 <- alignSpectra(spectra5,reference = spectra5[[1]])
+  spectra6 <- alignSpectra(spectra5,reference = spectra5[[1]])
   
   # average technical replicates -----------------------------------------------
-  # change based on how many spectra you imported
-  average.sequence<- factor(c("1","1","1", "2","2","2","3","3","3","4","4","4","5","5","5","6",
-                              "6","6","7","7","7","8","8","8","9","9","9"),
-                            levels = c("1","2","3","4","5","6","7","8","9"))
-  spectra6<-averageMassSpectra(spectra6_0, labels = average.sequence, method="mean") # Average technical replicates
+  spectra7 <- averageMassSpectra(spectra6, fileDf$samp, method="mean")
   
   # Pick Peaks -----------------------------------------------------------------
-  peaks <- detectPeaks(spectra6, SNR = snr, halfWindowSize = 10, method = "MAD")
+  peaks <- detectPeaks(spectra7, SNR = snr, halfWindowSize = 10, method = "MAD")
   peaks <- binPeaks(peaks, tolerance = 0.5)
   
   # Preparing Spectra for dot product ------------------------------------------
   # This small section extracts the sample file name and adjusts it to be the sample name.
-  sample <- sapply(spectra6, function(x) metaData(x)$file)
-  sample <- gsub(".*\\\\", "", sample)
-  sample <- gsub(".mzML$","",sample)
-  sample <- sample[1,]
-  sample <- gsub("001","",sample)  #since triplicate, so only select "001" sample for renaming
-  sample <- factor(sample) 
+  samp <- sapply(spectra7, function(x) metaData(x)$file)
+  samp <- gsub(".*\\\\", "", samp)
+  samp <- gsub(".mzML$","",samp)
+  samp <- samp[1, ]
+  samp <- gsub("001","",samp)  #since triplicate, so only select "001" sample for renaming
+  samp <- factor(samp) 
   
   # Retrieves identified peaks and intensities as a matrix (row = sample, col = m/z, value = intensity)
-  features <- intensityMatrix(peaks, spectra6)
-  rownames(features) <- sample
+  features <- intensityMatrix(peaks, spectra7)
+  rownames(features) <- samp
   
-  return(features)
+  # Tranform wide matrix to long dataframe -------------------------------------
+  featTbl <- as.tibble(rownames_to_column(as.data.frame(features))) %>%
+      mutate(colistin = ifelse(str_detect(rowname, "WT"), "susceptible", "resistant"),
+             samp = str_match(rowname, "/([^/]+) $")[ , 2],
+             species = str_match(samp, "^(.+?) ")[ , 2]) %>%
+      select(-rowname) %>%
+      gather(mz, relInt, -colistin, -samp, -species) %>%
+      group_by(samp) %>%
+      mutate(mz = as.numeric(mz),
+             relInt = relInt / max(relInt),
+             relInt = ifelse(colistin == "susceptible", -relInt, relInt))
+  
+  return(featTbl)
 }
