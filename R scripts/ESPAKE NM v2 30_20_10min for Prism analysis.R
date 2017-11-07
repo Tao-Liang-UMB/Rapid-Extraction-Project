@@ -23,12 +23,12 @@ features9 <- AnalyzeSpectra("Data/NM ESKAPE 30min 003 Pearson Caroff prism", snr
 diaggrab <- function(feature){
   
   massrange<-as.numeric(colnames(feature))         
-  massrange1<- massrange[massrange>=1200]           # choose the mass range that you want
+  massrange1<- massrange[massrange>=1250]           # choose the mass range that you want
   massrange2<-length(massrange)-length(massrange1)  
   feature<-feature[,massrange2:length(massrange)]  # select the mass range from the processed raw data
   
-  feature.Car <- feature[1:11,]
-  feature.NM <- feature[12:22,]   # change according to how many spectra you imported!
+  feature.Car <- feature[1:10,]
+  feature.NM <- feature[11:20,]   # change according to how many spectra you imported!
   #--------------------------------------------------------------------------------------------------------
   
   feature.Cart<-t(feature.Car)

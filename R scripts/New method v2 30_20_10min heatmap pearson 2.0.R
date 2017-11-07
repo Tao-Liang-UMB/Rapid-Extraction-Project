@@ -12,7 +12,7 @@ set.seed(1234)
 # Imports spectra, normalizes and performs peak picking. Check 
 # <AnalyzeSpectra.R> for details
 
-features <- AnalyzeSpectra("Data/New method v2 heatmap 20min", snr = 8)  # change to your path
+features <- AnalyzeSpectra("Data/New method v2 heatmap 10min", snr = 8)  # change to your path
 
 # rename the rowname of features, to simply the bacterial species name
 rownames(features) <- c("A. baumannii *",
@@ -33,8 +33,11 @@ rownames(features) <- c("A. baumannii *",
                         "S. marcescens**",
                         "Y. pestis 25°C",
                         "Y. pestis 37°C",
+                        "E. faecalis",
+                        "E. faecium",
                         "S. aureus",
-                        "C. albicans")
+                        "C. albicans",
+                        "C. glabrata")
 
 # Pearson correlation ------------------------------------------------------------------
 features.t<-t(features)
@@ -61,7 +64,7 @@ p <- ggplot(dfMelt, aes(variable,names)) +
                        colours = colorRampPalette(c("white","white", "coral", "black"))(256),
                        values =rescale(c(-0.15, 0, 0.5, 1))) +
   theme(axis.text.x = element_text(angle=55, hjust=1),
-        axis.text = element_text(color="black", , face = "bold.italic"), 
+        axis.text = element_text(color="black", face = "bold.italic"), 
         panel.background = element_blank(),
         panel.grid = element_blank(),
         axis.title = element_blank(),
@@ -72,10 +75,10 @@ p <- ggplot(dfMelt, aes(variable,names)) +
   coord_fixed(ratio = 1)  
 p
 
-ggsave("Figures/New method v2 Pearson's heatmap 20min G+-fungi.tiff",width=10,height=10,units="in")
+ggsave("Figures/New method v2 Pearson's heatmap 10min G+-fungi.tiff",width=10,height=10,units="in")
 
 
 # file output seection----------------------------------------------------------------------
 # needs to be flipped around to match heatmap
 dfwrite <- as.data.frame(sim[nrow(sim):1, ])  # dfwrite is a variable name
-write.csv(dfwrite, "Results/new method v2 Pearson's heatmap 20min G+-fungi.csv")  #change to your path!
+write.csv(dfwrite, "Results/new method v2 Pearson's heatmap 10min G+-fungi.csv")  #change to your path
